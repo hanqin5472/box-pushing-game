@@ -1,18 +1,486 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh">
 <head>
-    <title>推箱子游戏</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>推箱子小游戏 - 10关卡专业版</title>
+  <style>
+    body {
+      font-family: 'Microsoft YaHei', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #333;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+      margin-bottom: 5px;
+    }
+    .subtitle {
+      color: #666;
+      margin-top: 0;
+      margin-bottom: 20px;
+    }
+    #game-container {
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    #game-board {
+      margin: 0 auto;
+      border: 2px solid #ddd;
+    }
+    .row {
+      display: flex;
+    }
+    .cell {
+      width: 50px;
+      height: 50px;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+    .floor { background-color: #f9f3e6; }
+    .wall { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><rect width="50" height="50" fill="%23755d44"/><rect x="5" y="5" width="40" height="40" fill="%2397866e"/></svg>'); }
+    .player { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="%23e74c3c"/><circle cx="25" cy="15" r="5" fill="%23fff"/></svg>'); }
+    .box { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><rect x="10" y="10" width="30" height="30" fill="%23e67e22" stroke="%23d35400" stroke-width="2"/></svg>'); }
+    .target { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><circle cx="25" cy="25" r="12" fill="none" stroke="%233498db" stroke-width="3" stroke-dasharray="4,2"/></svg>'); }
+    .box-on-target { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50"><rect x="10" y="10" width="30" height="30" fill="%232ecc71" stroke="%2327ae60" stroke-width="2"/></svg>'); }
+    #controls {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    .control-row {
+      display: flex;
+      gap: 8px;
+    }
+    button {
+      width: 50px;
+      height: 50px;
+      font-size: 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background-color: #2980b9;
+      transform: scale(1.05);
+    }
+    #stats {
+      display: flex;
+      justify-content: space-around;
+      width: 100%;
+      margin-top: 10px;
+      color: #555;
+    }
+    #reset-btn {
+      width: auto;
+      padding: 0 15px;
+      background-color: #e74c3c;
+      margin-top: 10px;
+    }
+    #reset-btn:hover {
+      background-color: #c0392b;
+    }
+    #message {
+      margin-top: 15px;
+      padding: 8px 15px;
+      background-color: #2ecc71;
+      color: white;
+      border-radius: 5px;
+      display: none;
+      text-align: center;
+    }
+    .level-selector {
+      margin-top: 15px;
+    }
+    select {
+      padding: 5px 10px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+  </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>推箱子游戏</h1>
-        <div class="game-info">
-            <span id="moves">移动: 0</span>
-            <button id="reset">重新开始</button>
-        </div>
-        <div id="game-board"></div>
+  <h1>推箱子小游戏</h1>
+  <p class="subtitle">专业版 - 10个精心设计关卡</p>
+  
+  <div id="game-container">
+    <div id="game-board"></div>
+    <div id="stats">
+      <div>关卡: <span id="current-level">1</span>/<span id="total-levels">10</span></div>
+      <div>步数: <span id="move-count">0</span></div>
+      <div>最佳: <span id="best-score">-</span></div>
     </div>
-    <script src="game.js"></script>
+    <div id="message"></div>
+  </div>
+  
+  <div id="controls">
+    <div class="control-row">
+      <button id="up-btn" onclick="movePlayer(-1, 0)">↑</button>
+    </div>
+    <div class="control-row">
+      <button id="left-btn" onclick="movePlayer(0, -1)">←</button>
+      <button id="right-btn" onclick="movePlayer(0, 1)">→</button>
+    </div>
+    <div class="control-row">
+      <button id="down-btn" onclick="movePlayer(1, 0)">↓</button>
+    </div>
+    <button id="reset-btn" onclick="resetLevel()">重置关卡</button>
+    <div class="level-selector">
+      选择关卡: 
+      <select id="level-select" onchange="changeLevel()">
+        <option value="0">1 - 新手入门</option>
+        <option value="1">2 - 基础训练</option>
+        <option value="2">3 - 迷宫挑战</option>
+        <option value="3">4 - 对称之美</option>
+        <option value="4">5 - 多箱难题</option>
+        <option value="5">6 - 狭窄通道</option>
+        <option value="6">7 - 复杂布局</option>
+        <option value="7">8 - 隐藏路径</option>
+        <option value="8">9 - 大师级</option>
+        <option value="9">10 - 终极挑战</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    // 10个精心设计的关卡
+    const levels = [
+      { // 第1关 - 新手入门
+        name: "新手入门",
+        map: [
+          '########',
+          '#    @ #',
+          '# $$ * #',
+          '#   *  #',
+          '#   #  #',
+          '########'
+        ],
+        width: 8, height: 6
+      },
+      { // 第2关 - 基础训练
+        name: "基础训练", 
+        map: [
+          ' ###### ',
+          '##    ##',
+          '# $  $ #',
+          '#  @   #',
+          '## * *##',
+          ' #    # ',
+          ' ###### '
+        ],
+        width: 8, height: 7
+      },
+      { // 第3关 - 迷宫挑战
+        name: "迷宫挑战",
+        map: [
+          '#########',
+          '#   #   #',
+          '# $###$ #',
+          '# * @ * #',
+          '# $###$ #',
+          '#   #   #',
+          '#########'
+        ],
+        width: 9, height: 7
+      },
+      { // 第4关 - 对称之美
+        name: "对称之美",
+        map: [
+          '  #####  ',
+          '###   ###',
+          '#  $@$  #',
+          '# * # * #',
+          '#  $ $  #',
+          '### * ###',
+          '  #####  '
+        ],
+        width: 9, height: 7
+      },
+      { // 第5关 - 多箱难题
+        name: "多箱难题",
+        map: [
+          '#########',
+          '#  ***  #',
+          '#  $$$  #',
+          '#   #   #',
+          '#   @   #',
+          '#########'
+        ],
+        width: 9, height: 6
+      },
+      { // 第6关 - 狭窄通道
+        name: "狭窄通道",
+        map: [
+          '#######',
+          '#*#*#*#',
+          '# $ $ #',
+          '# ### #',
+          '# @   #',
+          '#######'
+        ],
+        width: 7, height: 6
+      },
+      { // 第7关 - 复杂布局
+        name: "复杂布局",
+        map: [
+          '  ######  ',
+          '###    ###',
+          '#   $$   #',
+          '# # ## # #',
+          '# * @ * * #',
+          '###    ###',
+          '  ######  '
+        ],
+        width: 10, height: 7
+      },
+      { // 第8关 - 隐藏路径
+        name: "隐藏路径",
+        map: [
+          '##########',
+          '#  #     #',
+          '# $*# $$ #',
+          '#  #  @  #',
+          '# $*# $$ #',
+          '#  #  *  #',
+          '##########'
+        ],
+        width: 10, height: 7
+      },
+      { // 第9关 - 大师级
+        name: "大师级",
+        map: [
+          '#########',
+          '#*** ***#',
+          '# $ $ $ #',
+          '#   #   #',
+          '# $ # $ #',
+          '#   @   #',
+          '#########'
+        ],
+        width: 9, height: 7
+      },
+      { // 第10关 - 终极挑战
+        name: "终极挑战",
+        map: [
+          ' ######## ',
+          '##     ##',
+          '# $###$ #',
+          '# * * * #',
+          '# $###$ #',
+          '#  @    #',
+          '#########'
+        ],
+        width: 10, height: 7
+      }
+    ];
+
+    // 游戏状态
+    let currentLevel = 0;
+    let moveCount = 0;
+    let bestScores = Array(10).fill(null);
+    let gameState = {
+      playerPos: {x: 0, y: 0},
+      boxes: [],
+      targets: []
+    };
+
+    // 初始化游戏
+    function initGame() {
+      const level = levels[currentLevel];
+      const gameBoard = document.getElementById('game-board');
+      gameBoard.innerHTML = '';
+      gameBoard.style.width = (level.width * 50) + 'px';
+      gameBoard.style.height = (level.height * 50) + 'px';
+
+      document.getElementById('current-level').textContent = currentLevel + 1;
+      document.getElementById('level-select').value = currentLevel;
+      document.getElementById('message').style.display = 'none';
+      moveCount = 0;
+      updateMoveCounter();
+      updateBestScore();
+
+      // 重置游戏状态
+      gameState.boxes = [];
+      gameState.targets = [];
+
+      // 解析地图
+      for (let y = 0; y < level.height; y++) {
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row';
+        
+        for (let x = 0; x < level.width; x++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell floor';
+          cell.id = `cell-${x}-${y}`;
+          
+          const char = level.map[y][x];
+          switch (char) {
+            case '#': cell.classList.add('wall'); break;
+            case '@': 
+              gameState.playerPos = {x, y};
+              cell.classList.add('player');
+              break;
+            case '$': 
+              gameState.boxes.push({x, y});
+              cell.classList.add('box');
+              break;
+            case '*': 
+              gameState.targets.push({x, y});
+              cell.classList.add('target');
+              break;
+          }
+          
+          rowDiv.appendChild(cell);
+        }
+        gameBoard.appendChild(rowDiv);
+      }
+      
+      renderGame();
+    }
+
+    // 渲染游戏状态
+    function renderGame() {
+      // 清除所有动态元素
+      document.querySelectorAll('.player, .box, .box-on-target').forEach(el => {
+        el.classList.remove('player', 'box', 'box-on-target');
+      });
+
+      // 绘制玩家
+      const playerCell = document.getElementById(`cell-${gameState.playerPos.x}-${gameState.playerPos.y}`);
+      if (playerCell) playerCell.classList.add('player');
+
+      // 绘制箱子和目标
+      gameState.boxes.forEach(box => {
+        const cell = document.getElementById(`cell-${box.x}-${box.y}`);
+        if (cell) {
+          if (isTarget(box.x, box.y)) {
+            cell.classList.add('box-on-target');
+          } else {
+            cell.classList.add('box');
+          }
+        }
+      });
+
+      // 检查胜利条件
+      if (checkWin()) {
+        showMessage(`恭喜通过 ${levels[currentLevel].name} 关卡！`);
+        updateBestScore(true);
+        
+        setTimeout(() => {
+          if (currentLevel < levels.length - 1) {
+            currentLevel++;
+            initGame();
+          } else {
+            showMessage('🎉 恭喜你通关了所有关卡！');
+          }
+        }, 1000);
+      }
+    }
+
+    // 移动玩家
+    function movePlayer(dy, dx) {
+      const newX = gameState.playerPos.x + dx;
+      const newY = gameState.playerPos.y + dy;
+      
+      if (isWall(newX, newY)) return;
+      
+      // 检查是否推动箱子
+      const boxIndex = findBox(newX, newY);
+      if (boxIndex !== -1) {
+        const boxNewX = newX + dx;
+        const boxNewY = newY + dy;
+        
+        if (isWall(boxNewX, boxNewY) || findBox(boxNewX, boxNewY) !== -1) {
+          return; // 不能推动
+        }
+        
+        // 移动箱子
+        gameState.boxes[boxIndex] = {x: boxNewX, y: boxNewY};
+      }
+      
+      // 移动玩家
+      gameState.playerPos = {x: newX, y: newY};
+      moveCount++;
+      updateMoveCounter();
+      renderGame();
+    }
+
+    // 辅助函数
+    function isWall(x, y) {
+      const cell = document.getElementById(`cell-${x}-${y}`);
+      return cell && cell.classList.contains('wall');
+    }
+
+    function isTarget(x, y) {
+      return gameState.targets.some(t => t.x === x && t.y === y);
+    }
+
+    function findBox(x, y) {
+      return gameState.boxes.findIndex(b => b.x === x && b.y === y);
+    }
+
+    function checkWin() {
+      return gameState.targets.every(target => {
+        return gameState.boxes.some(box => {
+          return box.x === target.x && box.y === target.y;
+        });
+      });
+    }
+
+    function resetLevel() {
+      initGame();
+    }
+
+    function changeLevel() {
+      currentLevel = parseInt(document.getElementById('level-select').value);
+      initGame();
+    }
+
+    function showMessage(msg) {
+      const messageEl = document.getElementById('message');
+      messageEl.textContent = msg;
+      messageEl.style.display = 'block';
+    }
+
+    function updateMoveCounter() {
+      document.getElementById('move-count').textContent = moveCount;
+    }
+
+    function updateBestScore(isWin = false) {
+      if (isWin && (bestScores[currentLevel] === null || moveCount < bestScores[currentLevel])) {
+        bestScores[currentLevel] = moveCount;
+      }
+      
+      const bestScoreEl = document.getElementById('best-score');
+      bestScoreEl.textContent = bestScores[currentLevel] !== null ? bestScores[currentLevel] : '-';
+    }
+
+    // 键盘控制
+    document.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowUp': case 'w': case 'W': movePlayer(-1, 0); break;
+        case 'ArrowDown': case 's': case 'S': movePlayer(1, 0); break;
+        case 'ArrowLeft': case 'a': case 'A': movePlayer(0, -1); break;
+        case 'ArrowRight': case 'd': case 'D': movePlayer(0, 1); break;
+        case 'r': case 'R': resetLevel(); break;
+      }
+    });
+
+    // 初始化游戏
+    window.onload = initGame;
+  </script>
 </body>
 </html>
